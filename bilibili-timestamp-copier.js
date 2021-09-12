@@ -10,18 +10,20 @@
 // ==/UserScript==
 
 (function() {
-    var TEXT_COPY_BUTTON = "复制时间轴";
     var TEXT_OPEN_BUTTON = "打开复制功能";
-    var div = document.createElement('span'),openDiv = document.createElement('div');
+    var openDiv = document.createElement('div');
     var openDivCss = `left: 0;
 	position: fixed;
 	bottom: 0;
 	width: 100%;
     z-index: 100;
    `
+    var copy_time_stamp = create_element_on_share_panel("复制时间轴","copier",getTime)
+    var copy_parts_stamp = create_element_on_share_panel("复制分p信息","parts-copier",getPart)
     openDiv.setAttribute('style', openDivCss);
     openDiv.addEventListener('mousedown', function () {
-      load()
+      load(copy_time_stamp);
+      load(copy_parts_stamp);
     });
     openDiv.textContent = TEXT_OPEN_BUTTON;
     openDiv.setAttribute('class', "openMode");
@@ -29,30 +31,56 @@
     var body = document.getElementsByTagName("body")[0];
     body.appendChild(openDiv);
 
-    // https://blog.csdn.net/u010565174/article/details/46909351
-    div.textContent = TEXT_COPY_BUTTON;
-    // 添加class name，方便查找
-    div.setAttribute('class', "copier");
-        // 监听点击事件
-    div.addEventListener('mousedown', function () {
-      tempAlert("复制成功",1000)
-      copyTextToClipboard(getTime())
-    });
-    //load();
-    // 每三秒检查一次元素是否在页面上
-   // var checkExist = setInterval(function(){
-        //if($(".copier").length < 1){
-            //load();
-        //}
-    //}, 3000);
-
+    function create_element_on_share_panel(name, className, callBack){
+        // name: 元素的名字
+        // className: 元素的class id
+        // callBack: 功能函数回调
+        // 在分享栏创建元素
+        var TEXT_COPY_BUTTON = name;
+        var div = document.createElement('span');
+        div.textContent = name;
+        // 添加class name，方便查找
+        div.setAttribute('class', className);
+        div.addEventListener('mousedown', function () {
+            tempAlert("复制成功",1000)
+            copyTextToClipboard(callBack())
+        });
+        return div;
+    }
     // 挂载脚本和元素
-    function load(){
+    function load(div){
         // 将标签塞入到页面中,插入到点赞分享的位置后面
         var ops = document.getElementsByClassName('ops')[0]
         ops.appendChild(div);
-        //$(".ops")[0].after(div);
     }
+    // 得到分p信息
+    function getPart(){
+        var titleName = window.document.title.split("_")[0];
+        // 获得BV号
+        var BVnum = /BV[a-zA-Z1-9]+/.exec(window.location.href)
+        var str = `# ${titleName} ${BVnum}\n`
+        var href = "//div[@class='cur-list']/ul/li/a/@href"
+        var title = "//div[@class='cur-list']/ul/li/a/@title"
+
+        var ltitle = getEl4xpath(title)
+        var lhref = getEl4xpath(href)
+        for (href of lhref){
+            str = str + "## " + href.value.split('?').pop().split('=').join("") + " " + ltitle.shift().value + '\n' + "### 笔记\n### 疑问\n### bug\n### 弹幕\n\n"
+        }
+        return str
+    }
+    // 从xptah中获取dom节点
+    // https://blog.csdn.net/u010622874/article/details/114589598
+    function getEl4xpath(xpath) {
+    const pEl = document.evaluate(xpath,document,null, XPathResult.ANY_TYPE, null)
+    const result = []
+    let dom = pEl.iterateNext()
+    while(dom) {
+    result.push(dom)
+    dom = pEl.iterateNext()
+    }
+    return  result
+}
 
     function getTime(){
         var [minutes,seconds] = $(".bilibili-player-video-time-now")[0].textContent.split(":")
